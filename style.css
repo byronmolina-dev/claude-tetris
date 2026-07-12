@@ -165,6 +165,23 @@ body {
   border-radius: 4px;
 }
 
+/* ---- Skin selector ---- */
+.skin-select {
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  color: var(--kbd-color);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  width: 100%;
+}
+
+.skin-select:focus {
+  outline: 1px solid var(--value-color);
+}
+
 .piece-name {
   font-size: 10px;
   letter-spacing: 1px;
