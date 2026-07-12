@@ -14,6 +14,7 @@
         <span class="theme-toggle-thumb"></span>
       </span>
     </label>
+    <button id="records-btn" class="records-btn" type="button" title="Ver récords">Récords</button>
     <h1 class="game-title">TETRIS</h1>
     <div class="game-container">
       <canvas id="board" width="300" height="600"></canvas>
@@ -55,7 +56,31 @@
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
+
+        <form id="overlay-name-form" class="name-form hidden">
+          <label class="label" for="overlay-name-input">¡Nuevo récord! Nombre</label>
+          <input id="overlay-name-input" type="text" maxlength="12" autocomplete="off" placeholder="Nombre" />
+          <button type="submit" id="overlay-save-btn">Guardar</button>
+        </form>
+
+        <div id="overlay-highscores-section" class="records-section hidden">
+          <p class="overlay-heading">RÉCORDS</p>
+          <ol id="overlay-highscores-list" class="highscore-list"></ol>
+          <p id="overlay-stats" class="stats-line"></p>
+          <button id="overlay-reset-btn" class="reset-btn" type="button">Resetear récords</button>
+        </div>
+
         <button id="restart-btn">Reiniciar</button>
+      </div>
+    </div>
+
+    <div id="start-screen" class="overlay hidden">
+      <div class="overlay-box">
+        <p class="overlay-heading">RÉCORDS</p>
+        <ol id="start-highscores-list" class="highscore-list"></ol>
+        <p id="start-stats" class="stats-line"></p>
+        <button id="start-play-btn" type="button">Jugar</button>
+        <button id="start-reset-btn" class="reset-btn" type="button">Resetear récords</button>
       </div>
     </div>
   </div>

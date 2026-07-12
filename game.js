@@ -53,10 +53,54 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
+const recordsBtn = document.getElementById('records-btn');
+const startScreen = document.getElementById('start-screen');
+const startHighscoresList = document.getElementById('start-highscores-list');
+const startStatsEl = document.getElementById('start-stats');
+const startPlayBtn = document.getElementById('start-play-btn');
+const startResetBtn = document.getElementById('start-reset-btn');
+const overlayNameForm = document.getElementById('overlay-name-form');
+const overlayNameInput = document.getElementById('overlay-name-input');
+const overlayHighscoresSection = document.getElementById('overlay-highscores-section');
+const overlayHighscoresList = document.getElementById('overlay-highscores-list');
+const overlayStatsEl = document.getElementById('overlay-stats');
+const overlayResetBtn = document.getElementById('overlay-reset-btn');
 
 const GRID_LINE_COLORS = { dark: '#22222e', light: '#d8dae8' };
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+// ---- High scores / records persistence ----
+const RECORDS_KEY = 'tetris-records';
+const MAX_RECORDS = 5;
+
+function loadRecords() {
+  try {
+    const raw = localStorage.getItem(RECORDS_KEY);
+    if (!raw) return { scores: [], bestCombo: 0, maxLines: 0 };
+    const parsed = JSON.parse(raw);
+    const scores = Array.isArray(parsed.scores)
+      ? parsed.scores.filter(e => e && typeof e.name === 'string' && Number.isFinite(e.score))
+      : [];
+    return {
+      scores: scores.slice(0, MAX_RECORDS),
+      bestCombo: Number.isFinite(parsed.bestCombo) ? parsed.bestCombo : 0,
+      maxLines: Number.isFinite(parsed.maxLines) ? parsed.maxLines : 0,
+    };
+  } catch (e) {
+    return { scores: [], bestCombo: 0, maxLines: 0 };
+  }
+}
+
+function saveRecords() {
+  try {
+    localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
+  } catch (e) {
+    // storage unavailable/full — ignore, records simply won't persist
+  }
+}
+
+let records = loadRecords();
+
+let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, combo;
 let gridLineColor = GRID_LINE_COLORS.dark;
 
 function createBoard() {
@@ -124,11 +168,20 @@ function clearLines() {
     }
   }
   if (cleared) {
+    // Combo = consecutive locks (across the whole game) that clear at least
+    // one line; it resets to 0 the moment a piece locks without clearing.
+    combo++;
+    if (combo > records.bestCombo) {
+      records.bestCombo = combo;
+      saveRecords();
+    }
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
+  } else {
+    combo = 0;
   }
 }
 
@@ -239,11 +292,107 @@ function drawNext() {
   nextNameEl.textContent = PIECE_NAMES[next.type] || '';
 }
 
+// "Líneas máximas" = the most lines cleared within a single game (not a
+// cumulative total across every game ever played).
+function qualifiesForTopScores(s) {
+  if (s <= 0) return false;
+  if (records.scores.length < MAX_RECORDS) return true;
+  const lowest = records.scores.reduce((min, e) => (e.score < min.score ? e : min), records.scores[0]);
+  return s > lowest.score;
+}
+
+function renderHighScores(listEl, highlightEntry) {
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  if (records.scores.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'highscore-empty';
+    li.textContent = 'Sin récords todavía';
+    listEl.appendChild(li);
+    return;
+  }
+  const sorted = [...records.scores].sort((a, b) => b.score - a.score);
+  sorted.forEach((entry, i) => {
+    const li = document.createElement('li');
+    const rank = document.createElement('span');
+    rank.textContent = `${i + 1}. ${entry.name}`;
+    const value = document.createElement('span');
+    value.textContent = entry.score.toLocaleString();
+    li.appendChild(rank);
+    li.appendChild(value);
+    if (highlightEntry && entry === highlightEntry) {
+      li.classList.add('highscore-highlight');
+    }
+    listEl.appendChild(li);
+  });
+}
+
+function renderStats(el) {
+  if (!el) return;
+  el.textContent = `Mejor combo: ${records.bestCombo}   ·   Líneas máximas: ${records.maxLines}`;
+}
+
+function showNameForm() {
+  overlayNameForm.classList.remove('hidden');
+  overlayNameInput.value = '';
+  overlayNameInput.focus();
+}
+
+function hideNameForm() {
+  overlayNameForm.classList.add('hidden');
+}
+
+function saveScoreEntry(rawName) {
+  const name = (rawName || '').trim().slice(0, 12) || 'AAA';
+  const entry = { name, score };
+  records.scores.push(entry);
+  records.scores.sort((a, b) => b.score - a.score);
+  records.scores = records.scores.slice(0, MAX_RECORDS);
+  saveRecords();
+  hideNameForm();
+  renderHighScores(overlayHighscoresList, entry);
+  renderStats(overlayStatsEl);
+}
+
+function resetRecords() {
+  records = { scores: [], bestCombo: 0, maxLines: 0 };
+  saveRecords();
+  renderHighScores(startHighscoresList, null);
+  renderStats(startStatsEl);
+  if (!overlayHighscoresSection.classList.contains('hidden')) {
+    renderHighScores(overlayHighscoresList, null);
+    renderStats(overlayStatsEl);
+  }
+}
+
+function showStartScreen() {
+  if (!gameOver) {
+    paused = true;
+    cancelAnimationFrame(animId);
+  }
+  renderHighScores(startHighscoresList, null);
+  renderStats(startStatsEl);
+  startScreen.classList.remove('hidden');
+}
+
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
+
+  if (lines > records.maxLines) records.maxLines = lines;
+  saveRecords();
+
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+
+  overlayHighscoresSection.classList.remove('hidden');
+  renderHighScores(overlayHighscoresList, null);
+  renderStats(overlayStatsEl);
+  if (qualifiesForTopScores(score)) {
+    showNameForm();
+  } else {
+    hideNameForm();
+  }
   overlay.classList.remove('hidden');
 }
 
@@ -257,6 +406,8 @@ function togglePause() {
     cancelAnimationFrame(animId);
     overlayTitle.textContent = 'PAUSA';
     overlayScore.textContent = '';
+    hideNameForm();
+    overlayHighscoresSection.classList.add('hidden');
     overlay.classList.remove('hidden');
   }
 }
@@ -283,6 +434,7 @@ function init() {
   score = 0;
   lines = 0;
   level = 1;
+  combo = 0;
   paused = false;
   gameOver = false;
   dropInterval = 1000;
@@ -297,6 +449,7 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  if (!startScreen.classList.contains('hidden')) return;
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
@@ -321,7 +474,33 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-restartBtn.addEventListener('click', init);
+restartBtn.addEventListener('click', () => {
+  // If a qualifying score's name form is still open, save it (with the
+  // default name if left blank) so restarting never silently discards it.
+  if (!overlayNameForm.classList.contains('hidden')) {
+    saveScoreEntry(overlayNameInput.value);
+  }
+  init();
+});
+
+overlayNameForm.addEventListener('submit', e => {
+  e.preventDefault();
+  saveScoreEntry(overlayNameInput.value);
+});
+
+overlayResetBtn.addEventListener('click', resetRecords);
+startResetBtn.addEventListener('click', resetRecords);
+
+recordsBtn.addEventListener('click', showStartScreen);
+
+startPlayBtn.addEventListener('click', () => {
+  startScreen.classList.add('hidden');
+  // Resumes the already-initialized game (fresh on first load, or the game
+  // in progress if the start screen was reopened via the "Récords" button).
+  paused = false;
+  lastTime = performance.now();
+  loop(lastTime);
+});
 
 function applyTheme(isLight) {
   document.body.classList.toggle('light-theme', isLight);
@@ -337,3 +516,4 @@ const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-sche
 applyTheme(prefersLight);
 
 init();
+showStartScreen();
