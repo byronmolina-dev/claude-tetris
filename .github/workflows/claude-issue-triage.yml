@@ -66,6 +66,11 @@ jobs:
                  enfoque a seguir.
                - Preguntas o información faltante necesaria antes de poder implementar la
                  solución, si aplica.
+               Escribe el cuerpo del comentario en formato Markdown compatible con GitHub
+               (GitHub Flavored Markdown), usando encabezados, listas y **negritas** donde
+               ayuden a la legibilidad, y bloques de código con backticks para nombres de
+               funciones y archivos (por ejemplo `collide()` en `game.js`), de forma que
+               GitHub lo renderice correctamente.
                Este diagnóstico se usará después para escribir el código de la solución,
                así que sé concreto y accionable, pero NO implementes ni modifiques código
                en este paso.
