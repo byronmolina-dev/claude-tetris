@@ -13,6 +13,7 @@ const COLORS = [
   '#e57373', // Z - red
   '#90caf9', // J - pale blue
   '#ffb74d', // L - orange
+  '#f44336', // PIEZA 3X3 - red
 ];
 
 const PIECES = [
@@ -24,7 +25,18 @@ const PIECES = [
   [[5,5,0],[0,5,5],[0,0,0]],                  // Z
   [[6,0,0],[6,6,6],[0,0,0]],                  // J
   [[0,0,7],[7,7,7],[0,0,0]],                  // L
+  [[8,8,8],[8,0,8],[8,8,8]],                  // PIEZA 3X3 - hueca
 ];
+
+// Formas usadas para colisión: para la mayoría de piezas coincide con PIECES,
+// pero la PIEZA 3X3 se trata como sólida (sin hueco) a efectos de colisión.
+const SOLID_SHAPES = {
+  8: [[8,8,8],[8,8,8],[8,8,8]],
+};
+
+const PIECE_NAMES = {
+  8: 'PIEZA 3X3',
+};
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
@@ -32,6 +44,7 @@ const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
 const nextCtx = nextCanvas.getContext('2d');
+const nextNameEl = document.getElementById('next-name');
 const scoreEl = document.getElementById('score');
 const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
@@ -51,9 +64,10 @@ function createBoard() {
 }
 
 function randomPiece() {
-  const type = Math.floor(Math.random() * 7) + 1;
+  const type = Math.floor(Math.random() * 8) + 1;
   const shape = PIECES[type].map(row => [...row]);
-  return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
+  const solid = (SOLID_SHAPES[type] || PIECES[type]).map(row => [...row]);
+  return { type, shape, solid, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
 }
 
 function collide(shape, ox, oy) {
@@ -79,11 +93,13 @@ function rotateCW(shape) {
 }
 
 function tryRotate() {
-  const rotated = rotateCW(current.shape);
+  const rotatedShape = rotateCW(current.shape);
+  const rotatedSolid = rotateCW(current.solid);
   const kicks = [0, -1, 1, -2, 2];
   for (const kick of kicks) {
-    if (!collide(rotated, current.x + kick, current.y)) {
-      current.shape = rotated;
+    if (!collide(rotatedSolid, current.x + kick, current.y)) {
+      current.shape = rotatedShape;
+      current.solid = rotatedSolid;
       current.x += kick;
       return;
     }
@@ -118,7 +134,7 @@ function clearLines() {
 
 function ghostY() {
   let gy = current.y;
-  while (!collide(current.shape, current.x, gy + 1)) gy++;
+  while (!collide(current.solid, current.x, gy + 1)) gy++;
   return gy;
 }
 
@@ -130,7 +146,7 @@ function hardDrop() {
 }
 
 function softDrop() {
-  if (!collide(current.shape, current.x, current.y + 1)) {
+  if (!collide(current.solid, current.x, current.y + 1)) {
     current.y++;
     score += 1;
     updateHUD();
@@ -148,7 +164,7 @@ function lockPiece() {
 function spawn() {
   current = next;
   next = randomPiece();
-  if (collide(current.shape, current.x, current.y)) {
+  if (collide(current.solid, current.x, current.y)) {
     endGame();
   }
   drawNext();
@@ -220,6 +236,7 @@ function drawNext() {
   for (let r = 0; r < shape.length; r++)
     for (let c = 0; c < shape[r].length; c++)
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
+  nextNameEl.textContent = PIECE_NAMES[next.type] || '';
 }
 
 function endGame() {
@@ -250,7 +267,7 @@ function loop(ts) {
   dropAccum += dt;
   if (dropAccum >= dropInterval) {
     dropAccum = 0;
-    if (!collide(current.shape, current.x, current.y + 1)) {
+    if (!collide(current.solid, current.x, current.y + 1)) {
       current.y++;
     } else {
       lockPiece();
@@ -283,10 +300,10 @@ document.addEventListener('keydown', e => {
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
-      if (!collide(current.shape, current.x - 1, current.y)) current.x--;
+      if (!collide(current.solid, current.x - 1, current.y)) current.x--;
       break;
     case 'ArrowRight':
-      if (!collide(current.shape, current.x + 1, current.y)) current.x++;
+      if (!collide(current.solid, current.x + 1, current.y)) current.x++;
       break;
     case 'ArrowDown':
       softDrop();
