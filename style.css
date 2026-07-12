@@ -236,7 +236,8 @@ kbd {
   color: var(--overlay-score-color);
 }
 
-#restart-btn {
+#restart-btn,
+.overlay-box button {
   margin-top: 8px;
   background: var(--restart-bg);
   color: var(--restart-color);
@@ -250,6 +251,57 @@ kbd {
   transition: background 0.15s;
 }
 
-#restart-btn:hover {
+#restart-btn:hover,
+.overlay-box button:hover {
   background: var(--restart-hover-bg);
+}
+
+/* ---- Menú de pausa ---- */
+.pause-menu-box {
+  min-width: 220px;
+}
+
+#pause-menu-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--overlay-title-color);
+}
+
+.pause-menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.pause-menu-buttons button {
+  margin-top: 0;
+}
+
+.pause-menu-level {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.pause-menu-level select {
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  color: var(--kbd-color);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+#controls-panel {
+  margin-top: 4px;
+}
+
+#controls-panel.hidden {
+  display: none;
 }
