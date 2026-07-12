@@ -1,0 +1,76 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  triage-issue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code for Issue Triage
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          # Permite que el workflow se ejecute aunque quien abrió el issue
+          # no tenga permisos de escritura sobre el repositorio.
+          allowed_non_write_users: "*"
+
+          # Solo necesita leer el código para diagnosticar y usar `gh` para
+          # etiquetar/comentar el issue; no debe modificar archivos.
+          claude_args: |
+            --allowedTools "Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh label list:*)"
+
+          prompt: |
+            Analiza el issue #${{ github.event.issue.number }} del repositorio ${{ github.repository }}.
+
+            Contexto del proyecto (ver CLAUDE.md para más detalle): es un juego de Tetris
+            en JavaScript vanilla sin build ni dependencias, con tres archivos fuente:
+            index.html, style.css y game.js (toda la lógica del juego vive en game.js).
+
+            Pasos a seguir:
+
+            1. Lee el issue completo, incluyendo comentarios existentes, con:
+               `gh issue view ${{ github.event.issue.number }} --json title,body,labels,comments`
+
+            2. Revisa el código relevante del repositorio (game.js, index.html, style.css)
+               para entender si el issue describe un bug, una mejora, una duda u otra cosa,
+               y para poder señalar con precisión las funciones o archivos implicados.
+
+            3. Asigna las etiquetas apropiadas usando SOLO las que ya existen en el
+               repositorio (bug, enhancement, documentation, question, duplicate, invalid,
+               help wanted, good first issue). Añádelas con:
+               `gh issue edit ${{ github.event.issue.number }} --add-label "<etiqueta>"`
+               No crees etiquetas nuevas. Si ya tiene una etiqueta que ya no aplica tras una
+               edición, quítala con `--remove-label`. Si ninguna etiqueta aplica con
+               claridad, no asignes ninguna.
+
+            4. Publica un único comentario de diagnóstico en el issue con
+               `gh issue comment ${{ github.event.issue.number }} --body "..."` que incluya:
+               - Un resumen breve del problema o solicitud.
+               - Si es un bug: la causa raíz más probable, indicando función(es) y
+                 archivo(s) concretos involucrados (por ejemplo `collide()` en game.js).
+               - Si es una mejora: qué partes del código habría que tocar y un esbozo del
+                 enfoque a seguir.
+               - Preguntas o información faltante necesaria antes de poder implementar la
+                 solución, si aplica.
+               Este diagnóstico se usará después para escribir el código de la solución,
+               así que sé concreto y accionable, pero NO implementes ni modifiques código
+               en este paso.
+
+            5. Si el issue ya tiene un comentario de diagnóstico tuyo anterior (busca
+               comentarios previos hechos por el bot de Claude), no lo repitas: publica un
+               nuevo comentario corto que actualice el diagnóstico según los cambios de la
+               edición, en lugar de duplicar todo el análisis.
