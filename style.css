@@ -165,6 +165,14 @@ body {
   border-radius: 4px;
 }
 
+.piece-name {
+  font-size: 10px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  color: #f44336;
+  min-height: 12px;
+}
+
 /* ---- Controles ---- */
 .controls ul {
   list-style: none;
